@@ -1,34 +1,58 @@
 import pandas as pd
+from prophet import Prophet
+from sklearn.metrics import mean_squared_error
 import numpy as np
-from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 
-# Initialize an empty list to store the year labels
-year_labels = []
 
-# Use a for loop to generate the year labels from 2010 to 2020
-for year in range(2010, 2019):
-    year_labels.append(str(year))
-rainfall = np.random.uniform(low=50.0, high=200.0, size=10)
+# Read the rainfall data from a CSV file
+data = pd.read_csv('rainfall_data.csv')
 
-plt.scatter(years, rainfall)
-plt.xlabel('Year')
-plt.ylabel('Rainfall (mm)')
+# Preprocess the data
+data['ds'] = pd.to_datetime(data['date'])
+data['y'] = data['rainfall']
+
+# Create and fit the Prophet model
+model = Prophet()
+model.fit(data)
+
+# Create a future dataframe for prediction
+future = model.make_future_dataframe(periods=365)  # Predict for the next 365 days
+
+# Make predictions
+forecast = model.predict(future)
+
+# Plot the forecast
+model.plot(forecast, xlabel='Date', ylabel='Rainfall')
+model.plot_components(forecast)  # Plot the components (trend, weekly seasonality, yearly seasonality)
+
+# Access individual components and predictions
+forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail()
+
+# Access the forecasted values
+predicted_rainfall = forecast[['ds', 'yhat']].tail(365)
+
+# Save the forecast to a CSV file
+predicted_rainfall.to_csv('predicted_rainfall.csv', index=False)
+
+# Actual rainfall values
+actual_rainfall = data['y'].values
+
+# Predicted rainfall values
+predicted_rainfall = forecast['yhat'].values[:-365]  # Exclude the forecasted values
+
+# Calculate RMSE
+rmse = np.sqrt(mean_squared_error(actual_rainfall, predicted_rainfall))
+print('Root Mean Squared Error (RMSE):', rmse)
+
+
+# Scatter plot of trends
+plt.scatter(data['ds'], data['y'], color='blue', label='Actual Rainfall')
+plt.scatter(forecast['ds'][:-365], forecast['yhat'][:-365], color='red', label='Predicted Rainfall')
+plt.xlabel('Date')
+plt.ylabel('Rainfall')
+plt.legend()
+plt.title('Scatter Plot of Actual and Predicted Rainfall Trends')
 plt.show()
-
-# Reshape the data to create a 2D array for fitting the model
-X = years.reshape(-1, 1)
-y = rainfall.reshape(-1, 1)
-
-# Create a linear regression object and fit the data
-model = LinearRegression()
-model.fit(X, y)
-
-# Predict the rainfall for 2020
-predicted_rainfall = model.predict([[2020]])
-
-print(f"The predicted rainfall for 2020 is {predicted_rainfall[0][0]} mm")
-
-
 
 
